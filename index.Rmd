@@ -1,0 +1,63 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Jiamin"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(caret)
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Executive Summary
+
+In this project, we use datasets from http://groupware.les.inf.puc-rio.br/har, where accelerometers data on the belt, forearm, arm and dumbbell of 6 participants were recorded. The participants were asked to perform barbell lifts in 5 different ways and our goal is to predict the manner in which they did the exercise. Model is trained using Random Forests with 3-fold cross validation. The out-of-sample error rate is estimated to be 0.38%.
+
+## Getting and Cleaning the Data
+
+The training and testing datasets are downloaded from their respective URLs and read into memory. The first 7 columns do not contain sensor data and will not be used as predictors. They are removed from the training dataset. Columns with NA are removed as well. The last column "classe" refers to the 5 different ways the barbell lifts are performed and is what we want to predict.
+
+```{r}
+trainURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+if (!file.exists("train.csv")) {
+        download.file(trainURL, destfile = "train.csv", method = "curl")
+}
+if (!file.exists("test.csv")) {
+        download.file(testURL, destfile = "test.csv", method = "curl")
+}
+
+training_raw <- read.csv("train.csv", na.strings = c("NA", "#DIV/0!", ""))
+testing <- read.csv("test.csv", na.strings = c("NA", "#DIV/0!", ""))
+
+str(training_raw)
+names(training_raw)
+
+training <- select(training_raw, roll_belt:classe)
+training <- training[,colSums(is.na(training)) == 0]
+```
+
+## Model Training and Cross Validation
+
+In this project, I would like to have a high accuracy of prediction and do not prioritise speed of prediction. Hence, I choose to use the Random Forests prediction. 3-fold cross validation is used.
+
+```{r cache=TRUE}
+set.seed(100)
+train_control <- trainControl(method="cv", number=3)
+modfit <- train(classe ~ ., data = training, method = "rf", trControl = train_control)
+modfit
+modfit$finalModel
+```
+
+The model is highly accurate and the out of sample error rate is estimated to be 0.38%.
+
+## Prediction
+
+Using the model from the previous section, we predict the manner of exercise on the testing data.
+
+```{r}
+pred <- predict(modfit, newdata = testing)
+pred
+```
